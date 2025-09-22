@@ -9,9 +9,12 @@ on:
       - '.github/workflows/backend_ci.yml'
 
 env:
-  # Secrets you set in GitHub
-  ACR_LOGIN_SERVER: ${{ secrets.ACR_LOGIN_SERVER }}     # e.g. acrmitalikaurweek07.azurecr.io
-  ACR_REGISTRY_NAME: ${{ secrets.ACR_REGISTRY_NAME }}   # e.g. acrmitalikaurweek07
+  # Set via GitHub → Settings → Secrets and variables → Actions
+  # Example values:
+  #   ACR_LOGIN_SERVER = acrmitalikaurweek07.azurecr.io
+  #   ACRUSERNAME      = acrmitalikaurweek07
+  #   ACRPASSWORD      = <password from ACR Access keys>
+  ACR_LOGIN_SERVER: ${{ secrets.ACR_LOGIN_SERVER }}
   IMAGE_TAG: ${{ github.sha }}-${{ github.run_id }}
 
 jobs:
@@ -93,18 +96,24 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
+      # --- Sanity check so we fail early if the secret is missing ---
+      - name: Sanity check env
+        run: |
+          echo "Registry: ${{ env.ACR_LOGIN_SERVER }}"
+          test -n "${{ env.ACR_LOGIN_SERVER }}"
+
       # Login directly to ACR using admin credentials
       - name: Docker login to ACR
         run: |
-          echo "${{ secrets.ACRPASSWORD }}" | docker login ${{ env.ACR_LOGIN_SERVER }} \
+          echo "${{ secrets.ACRPASSWORD }}" | docker login "${{ env.ACR_LOGIN_SERVER }}" \
             --username "${{ secrets.ACRUSERNAME }}" --password-stdin
 
       - name: Build and Push Product Service Image
         run: |
-          docker build -t ${{ env.ACR_LOGIN_SERVER }}/product_service:latest ./backend/product_service/
-          docker push ${{ env.ACR_LOGIN_SERVER }}/product_service:latest
+          docker build -t "${{ env.ACR_LOGIN_SERVER }}/product_service:latest" ./backend/product_service/
+          docker push "${{ env.ACR_LOGIN_SERVER }}/product_service:latest"
 
       - name: Build and Push Order Service Image
         run: |
-          docker build -t ${{ env.ACR_LOGIN_SERVER }}/order_service:latest ./backend/order_service/
-          docker push ${{ env.ACR_LOGIN_SERVER }}/order_service:latest
+          docker build -t "${{ env.ACR_LOGIN_SERVER }}/order_service:latest" ./backend/order_service/
+          docker push "${{ env.ACR_LOGIN_SERVER }}/order_service:latest"
