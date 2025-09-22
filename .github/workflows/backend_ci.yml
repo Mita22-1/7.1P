@@ -9,11 +9,9 @@ on:
       - '.github/workflows/backend_ci.yml'
 
 env:
-  # Secrets you must set in GitHub → Settings → Secrets → Actions
-  # ACR_LOGIN_SERVER example: acrmitalikaurweek07.azurecr.io
-  ACR_LOGIN_SERVER: ${{ secrets.ACR_LOGIN_SERVER }}
-  # ACR_REGISTRY_NAME example: acrmitalikaurweek07  (no domain)
-  ACR_REGISTRY_NAME: ${{ secrets.ACR_REGISTRY_NAME }}
+  # Secrets you set in GitHub
+  ACR_LOGIN_SERVER: ${{ secrets.ACR_LOGIN_SERVER }}     # e.g. acrmitalikaurweek07.azurecr.io
+  ACR_REGISTRY_NAME: ${{ secrets.ACR_REGISTRY_NAME }}   # e.g. acrmitalikaurweek07
   IMAGE_TAG: ${{ github.sha }}-${{ github.run_id }}
 
 jobs:
@@ -95,14 +93,11 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Azure Login (Service Principal)
-        uses: azure/login@v1
-        with:
-          creds: ${{ secrets.AZURE_CREDENTIALS }}
-
-      # NOTE: --name expects the REGISTRY NAME (no domain)
-      - name: Login to Azure Container Registry
-        run: az acr login --name ${{ env.ACR_REGISTRY_NAME }}
+      # Login directly to ACR using admin credentials
+      - name: Docker login to ACR
+        run: |
+          echo "${{ secrets.ACRPASSWORD }}" | docker login ${{ env.ACR_LOGIN_SERVER }} \
+            --username "${{ secrets.ACRUSERNAME }}" --password-stdin
 
       - name: Build and Push Product Service Image
         run: |
@@ -113,7 +108,3 @@ jobs:
         run: |
           docker build -t ${{ env.ACR_LOGIN_SERVER }}/order_service:latest ./backend/order_service/
           docker push ${{ env.ACR_LOGIN_SERVER }}/order_service:latest
-
-      - name: Logout from Azure
-        if: always()
-        run: az logout
